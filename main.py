@@ -1,4 +1,5 @@
 import nn as _nn
+import random as _random
 import decimal as _decimal
 
 
@@ -6,16 +7,18 @@ _INPUTS_SIZE = 100000
 
 
 if __name__ == "__main__":
-    # Inputs need to be sourced from a file or external data source.
-    inputs = [
-        _nn.Input(value=_decimal.Decimal(0.05), weight=_decimal.Decimal(0.05))
-        for _ in range(_INPUTS_SIZE)
-    ]
+    inputs = []
+    bias = _decimal.Decimal()
+    target_output = _decimal.Decimal(0.7)
 
-    nn_runner = _nn.NeuralNetwork(
-        bias=_decimal.Decimal(0.05)
-    ).prepare_run()
+    for _ in range(_INPUTS_SIZE):
+        value = _random.random()
+        weight = _random.random()
 
-    output = nn_runner(inputs)
+        # TODO: I think input values should sourced from a file or an external data source.
+        _nn.Input(value=value, weight=weight)
 
-    print(f"NN Output: {output}")
+    nn = _nn.NeuralNetwork(bias=bias)
+    nn.run(input_vector=inputs, target_output=target_output)
+
+    print(f"\nNN Output: {nn.output}\n")
