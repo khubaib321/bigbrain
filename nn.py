@@ -1,4 +1,5 @@
 import copy as _copy
+import random as _random
 import decimal as _decimal
 
 
@@ -13,10 +14,35 @@ class Input:
 
 
 class Neuron:
-    def __init__(self, input_vector: list[Input], bias: _decimal.Decimal):
+    def __init__(
+        self,
+        *,
+        bias: _decimal.Decimal,
+        inputs: list[_decimal.Decimal] = [],
+        weights: list[_decimal.Decimal] = [],
+    ):
         self._bias = bias
         self._linear_output = None
-        self._input_vector = input_vector
+
+        if not weights:
+            self._input_vector = [
+                Input(value=v, weight=_decimal.Decimal(_random.random()))
+                for v in inputs
+            ]
+        else:
+            if len(inputs) != len(weights):
+                raise ValueError(
+                    "Number of inputs and weights must be equal. "
+                    f"Inputs: {len(inputs)}, Weights: {len(weights)}"
+                )
+
+            self._input_vector = [
+                Input(value=v, weight=w) for v, w in zip(inputs, weights)
+            ]
+
+    @property
+    def input_vector(self) -> list[Input]:
+        return self._input_vector
 
     @property
     def _weighted_sum(self) -> _decimal.Decimal:
@@ -52,24 +78,29 @@ class Neuron:
 
 
 class NeuralNetwork:
-    def __init__(self, *, bias: _decimal.Decimal, width: int = 3, depth: int = 3):
+    def __init__(
+        self,
+        *,
+        bias: _decimal.Decimal,
+        width: int = 3,
+        depth: int = 3,
+        learning_rate: _decimal.Decimal(0.05),
+    ):
         self._bias = bias
         self._depth = depth
         self._width = width
 
         self._loss = None
         self._output = None
-        self._hidden_layers = []
-        self._computed_layers = []
+        self._learning_rate = learning_rate
 
-    def _compute_layer(self, layer: list["Neuron"]) -> list[Input]:
-        output_layer = [
-            Input(value=neuron.output, weight=_decimal.Decimal(0.05))
-            for neuron in layer
-        ]
-        self._computed_layers.append(layer)
+        self._nn_state: list[list[Neuron]] = []
 
-        return output_layer
+        for _ in range(self._depth):
+            self._nn_state.append([Neuron(bias=self._bias) for _ in range(self._width)])
+
+    def _compute_layer(self, layer: list["Neuron"]) -> list[_decimal.Decimal]:
+        return [neuron.output for neuron in layer]
 
     @property
     def loss(self) -> _decimal.Decimal:
@@ -87,7 +118,7 @@ class NeuralNetwork:
 
     def _compute_loss(self, target_ouput: _decimal.Decimal):
         """
-        Loss function for the neural network. 
+        Loss function for the neural network.
         Computes Squared Loss of the network's output.
         This loss function is only valid for running the NN on a single input (or input vector).
         If NN is running on multiple inputs (or input vectors) then MSE can/should be used a loss function.
@@ -96,26 +127,42 @@ class NeuralNetwork:
         # I have yet to learn what it means to run a single input vs multiple inputs.
         self._loss = (self.output - target_ouput) ** 2
 
-    def _adjust_weights(self, input_vector: list[Input]) -> list[Input]:
+    def _backpropagation(self, target_output: _decimal.Decimal):
         """
-        Adjust weights according to the latest loss values.
+        Back Propagation is used to adjust the weights of the neurons in the network.
+        It is used to minimize the loss value.
         """
 
-        loss_value = self.loss
-        weight_adjusted_iv: list[Input] = []
+        # Write the code for Back Propagation here.
 
-        for _input in input_vector:
+    def _grandient_descent(self):
+        """
+        Gradient Descent is used to adjust the weights of the neurons in the network.
+        It is used to minimize the loss value.
+        """
+
+        # Write the code for Gradient Descent here.
+
+    def _get_weights(self, *, row: int, col: int) -> list[_decimal.Decimal]:
+        """
+        Get weights of the neurons in the network.
+        """
+
+        neuron = self._nn_state[row][col]
+
+        current_weights = [input.weight for input in neuron.input_vector]
+
+        if self._loss and self._output:
+            # TODO: Adjust weights (?).
             # TODO: Use Back Propagation to adjust the weight according to loss value.
             # TODO: Define Learning Rate to control the degree of weight adjustments.
-            weight_adjusted_iv.append(_input)
+            pass
 
-        return weight_adjusted_iv
+        return current_weights
 
-    def compute_output(
-        self, input_vector: list[Input], at_depth: int = 0
-    ) -> None:
+    def compute_output(self, inputs: list[_decimal.Decimal]) -> None:
         """
-        Runs the neural network on the input vector.
+        Runs a single iteration of the neural network on the input vector.
             Width = 3
             Depth = 2
             Neuron = *
@@ -126,37 +173,46 @@ class NeuralNetwork:
                 *       ->      *         ->      *         ->      *       /
         """
 
-        # TODO: Use iterative approach. It is better than recursive approach.
-
-        while at_depth < self._depth:
-            input_layer = [
-                Neuron(input_vector=input_vector, bias=self._bias)
-                for _ in range(self._width)
-            ]
-
-            next_input_vector = self._compute_layer(input_layer)
-
-            return self.compute_output(
-                input_vector=next_input_vector, at_depth=at_depth + 1
-            )
-
         # TODO: Output layer typically uses different activation function than the hidden layers (why?).
-        # Adjust the Neuron interface to allow use of custom activation functions.
-        self._output = Neuron(input_vector=input_vector, bias=self._bias).output
+        # Adjust the Neuron interface to allow use of different activation functions.
+
+        output = _copy.deepcopy(inputs)
+
+        for layer_idx in range(self._depth):
+            # Input layer initialization.
+            input_layer = []
+            for level_idx in range(self._width):
+                # Input layer weights initialization.
+                weights = self._get_weights(row=level_idx, col=layer_idx)
+
+                input_layer.append(
+                    Neuron(bias=self._bias, inputs=output, weights=weights)
+                )
+
+                self._nn_state[level_idx][layer_idx] = input_layer[-1]
+
+            # Compute output of the layer. Feed the output of the current layer to the next layer.
+            output = self._compute_layer(input_layer)
+        
+        self._output = Neuron(bias=self._bias, inputs=output, weights=weights).output
 
     def run(
-        self, *, input_vector: list[Input], target_output: _decimal.Decimal
+        self, *, inputs: list[_decimal.Decimal], target_output: _decimal.Decimal
     ) -> None:
-        min_loss = _decimal.Decimal(0.05)
-        current_iv = _copy.deepcopy(input_vector)
+        min_loss = _decimal.Decimal(0.01) * target_output
+
+        print("\nCompute Goal: Minimize loss")
+
+        self.compute_output(inputs)
+        self._compute_loss(target_output)
+
+        print(f"Current loss value: {self.loss}")
+        print(f"Min acceptable loss value: {min_loss}")
 
         # TODO: Verify: Loop will not run indefinitely, right?
         while self.loss > min_loss:
-            print("\nCompute Goal: Minimize loss")
-
-            self.compute_output(current_iv)
+            self.compute_output(inputs)
             self._compute_loss(target_output)
-            current_iv = self._adjust_weights(input_vector)
 
             print(f"Current loss value: {self.loss}")
             print(f"Min acceptable loss value: {min_loss}")
