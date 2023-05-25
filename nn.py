@@ -193,7 +193,7 @@ class NeuralNetwork:
 
             # Compute output of the layer. Feed the output of the current layer to the next layer.
             output = self._compute_layer(input_layer)
-        
+
         self._output = Neuron(bias=self._bias, inputs=output, weights=weights).output
 
     def run(
@@ -206,13 +206,11 @@ class NeuralNetwork:
         self.compute_output(inputs)
         self._compute_loss(target_output)
 
-        print(f"Current loss value: {self.loss}")
-        print(f"Min acceptable loss value: {min_loss}")
-
         # TODO: Verify: Loop will not run indefinitely, right?
         while self.loss > min_loss:
+            print(f"Current Loss {self.loss} > Min Loss {min_loss}")
+
             self.compute_output(inputs)
             self._compute_loss(target_output)
 
-            print(f"Current loss value: {self.loss}")
-            print(f"Min acceptable loss value: {min_loss}")
+        print(f"Current Loss {self.loss} <= Min Loss {min_loss}")
