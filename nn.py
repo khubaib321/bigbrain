@@ -124,7 +124,7 @@ class NeuralNetwork:
         If NN is running on multiple inputs (or input vectors) then MSE can/should be used a loss function.
         """
 
-        # I have yet to learn what it means to run a single input vs multiple inputs.
+        # TODO: I have yet to learn what it means to run a single input vs multiple inputs.
         self._loss = (self.output - target_ouput) ** 2
 
     def _backpropagation(self, target_output: _decimal.Decimal):
@@ -133,7 +133,7 @@ class NeuralNetwork:
         It is used to minimize the loss value.
         """
 
-        # Write the code for Back Propagation here.
+        # TODO: Write the code for Back Propagation here.
 
     def _grandient_descent(self):
         """
@@ -141,7 +141,7 @@ class NeuralNetwork:
         It is used to minimize the loss value.
         """
 
-        # Write the code for Gradient Descent here.
+        # TODO: Write the code for Gradient Descent here.
 
     def _get_weights(self, *, row: int, col: int) -> list[_decimal.Decimal]:
         """
