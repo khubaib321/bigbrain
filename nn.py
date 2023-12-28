@@ -53,8 +53,8 @@ class Neuron:
 
     def _activation_function(self) -> _decimal.Decimal:
         """
-        To introduce non-linearity to the output, use one the common activation functions.
-        Activation function is applied to the calculated linear output. Commonly used functions:
+        To introduce non-linearity to the output, use one of the common activation functions.
+        An activation function is applied to the calculated linear output. Commonly used functions:
         - Sigmoid Function
         - ReLU (Rectified Linear Unit) Function
         - Tanh (Hyperbolic Tangent) Function
@@ -96,6 +96,7 @@ class NeuralNetwork:
 
         self._nn_state: list[list[Neuron]] = []
 
+        # Initialize each Neuron in the network with a bias, random inputs, and weights.
         for _ in range(self._depth):
             self._nn_state.append([Neuron(bias=self._bias) for _ in range(self._width)])
 
@@ -121,7 +122,7 @@ class NeuralNetwork:
         Loss function for the neural network.
         Computes Squared Loss of the network's output.
         This loss function is only valid for running the NN on a single input (or input vector).
-        If NN is running on multiple inputs (or input vectors) then MSE can/should be used a loss function.
+        If NN is running on multiple inputs (or input vectors) then MSE can/should be used as a loss function.
         """
 
         # TODO: I have yet to learn what it means to run a single input vs multiple inputs.
@@ -145,7 +146,7 @@ class NeuralNetwork:
 
     def _get_weights(self, *, row: int, col: int) -> list[_decimal.Decimal]:
         """
-        Get weights of the neurons in the network.
+        Get the weights of the neurons in the network.
         """
 
         neuron = self._nn_state[row][col]
@@ -154,7 +155,7 @@ class NeuralNetwork:
 
         if self._loss and self._output:
             # TODO: Adjust weights (?).
-            # TODO: Use Back Propagation to adjust the weight according to loss value.
+            # TODO: Use Back Propagation to adjust the weight according to the loss value.
             # TODO: Define Learning Rate to control the degree of weight adjustments.
             pass
 
@@ -162,7 +163,7 @@ class NeuralNetwork:
 
     def compute_output(self, inputs: list[_decimal.Decimal]) -> None:
         """
-        Runs a single iteration of the neural network on the input vector.
+        Runs a single iteration of the neural network on the input vector. Here's how the Neural Network can be visualized:
             Width = 3
             Depth = 2
             Neuron = *
@@ -173,11 +174,17 @@ class NeuralNetwork:
                 *       ->      *         ->      *         ->      *       /
         """
 
-        # TODO: Output layer typically uses different activation function than the hidden layers (why?).
-        # Adjust the Neuron interface to allow use of different activation functions.
+        # TODO: The output layer typically uses a different activation function than the hidden layers (why?).
+        # Adjust the Neuron interface to allow the use of different activation functions.
 
         output = _copy.deepcopy(inputs)
 
+        # Using a top-down approach for computing the output.
+        # Take a look at the visualization above.
+        # The outer loop points to a (vertical) layer.
+        # The inner loop initializes and computes the individual Neurons of the (vertical) layer (can be parallelized).
+        # The combined output of one (vertical) layer is fed as inputs to each of the Neurons of the next (vertical) layer.
+        # After a single run of this method, each Neuron in the network will have inputs and weights
         for layer_idx in range(self._depth):
             # Input layer initialization.
             input_layer = []
@@ -191,7 +198,7 @@ class NeuralNetwork:
 
                 self._nn_state[level_idx][layer_idx] = input_layer[-1]
 
-            # Compute output of the layer. Feed the output of the current layer to the next layer.
+            # Compute the output of the layer. Feed the output of the current layer to the next layer.
             output = self._compute_layer(input_layer)
 
         self._output = Neuron(bias=self._bias, inputs=output, weights=weights).output
