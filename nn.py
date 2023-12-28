@@ -71,7 +71,7 @@ class Neuron:
             )
 
         # ReLU (Rectified Linear Unit) Function
-        return max(0, self._linear_output)
+        return max(_decimal.Decimal(0), self._linear_output)
 
     @property
     def output(self) -> _decimal.Decimal:
