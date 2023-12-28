@@ -276,7 +276,7 @@ class NeuralNetwork:
         ), f"The output layer length {len(self._output_layer)} is not equal to the width of the network, something went wrong"
 
     def run(self, *, inputs: list[_decimal.Decimal]) -> None:
-        loss_tolerance = _decimal.Decimal(0.01)
+        loss_tolerance = _decimal.Decimal("0.01")
 
         print("\nCompute Goal: Minimize loss")
 
