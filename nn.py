@@ -1,6 +1,6 @@
 import copy as _copy
-import random as _random
 import decimal as _decimal
+import random as _random
 
 
 class Input:
@@ -84,7 +84,7 @@ class NeuralNetwork:
         bias: _decimal.Decimal,
         width: int = 3,
         depth: int = 3,
-        learning_rate: _decimal.Decimal(0.05),
+        learning_rate: _decimal.Decimal = _decimal.Decimal("0.05"),
     ):
         self._bias = bias
         self._depth = depth
@@ -194,6 +194,7 @@ class NeuralNetwork:
             # Compute output of the layer. Feed the output of the current layer to the next layer.
             output = self._compute_layer(input_layer)
 
+        weights = self._get_weights(row=self._width - 1, col=self._depth - 1)
         self._output = Neuron(bias=self._bias, inputs=output, weights=weights).output
 
     def run(

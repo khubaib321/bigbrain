@@ -1,7 +1,7 @@
-import nn as _nn
-import random as _random
 import decimal as _decimal
+import random as _random
 
+import nn as _nn
 
 _INPUTS_SIZE = 1000
 
