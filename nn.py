@@ -46,6 +46,10 @@ class Neuron:
 
     @property
     def _weighted_sum(self) -> _decimal.Decimal:
+        """
+        A simple weighted sum calculation. Can be optimized using Vector match (Dot Product).
+        """
+        
         return sum(
             (input.computed_value for input in self._input_vector),
             start=_decimal.Decimal(),
