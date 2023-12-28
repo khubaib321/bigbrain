@@ -240,7 +240,8 @@ class NeuralNetwork:
                 *       ->      *         ->      *         ->      *
                 *       ->      *         ->      *         ->      *
 
-        For the first iteration of the neural network, all weights in the network are randomized.
+        For the first iteration of this method, all weights in the network are randomized.
+        After the first iteration of this method, each Neuron in the network will have calculated inputs but still have random weights.
         """
         output = _copy.deepcopy(input)
 
@@ -249,7 +250,6 @@ class NeuralNetwork:
         # The outer loop points to a (vertical) layer.
         # The inner loop initializes and computes the individual Neurons of the (vertical) layer (can be parallelized).
         # The combined output of one (vertical) layer is fed as inputs to each of the Neurons of the next (vertical) layer.
-        # After a single run of this method, each Neuron in the network will have calculated inputs but still have random weights.
         for depth_idx in range(self._depth):
             # Input layer initialization.
             self._output_layer = []
