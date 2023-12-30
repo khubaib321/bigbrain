@@ -4,36 +4,32 @@ import decimal as _decimal
 import random as _random
 
 
-def _relu(value: _decimal.Decimal) -> _decimal.Decimal:
+def _relu(weighted_sum: _decimal.Decimal) -> _decimal.Decimal:
     """
     ReLU (Rectified Linear Unit).
     """
 
-    return max(_decimal.Decimal(0), value)
+    return max(_decimal.Decimal(0), weighted_sum)
 
 
-def _relu_dx(value: _decimal.Decimal) -> _decimal.Decimal:
+def _relu_dx(relu_output: _decimal.Decimal) -> _decimal.Decimal:
     """
     ReLU (Rectified Linear Unit) function derivative.
     """
 
-    return _decimal.Decimal(1) if value > _decimal.Decimal(0) else _decimal.Decimal(0)
+    return (
+        _decimal.Decimal(1)
+        if relu_output > _decimal.Decimal(0)
+        else _decimal.Decimal(0)
+    )
 
 
 def _softmax(value: _decimal.Decimal) -> _decimal.Decimal:
-    """
-    ReLU (Rectified Linear Unit).
-    """
-
-    return max(_decimal.Decimal(0), value)
+    return _decimal.Decimal()
 
 
 def _softmax_dx(value: _decimal.Decimal) -> _decimal.Decimal:
-    """
-    ReLU (Rectified Linear Unit) function derivative.
-    """
-
-    return _decimal.Decimal(1) if value > _decimal.Decimal(0) else _decimal.Decimal(0)
+    return _decimal.Decimal()
 
 
 class Input:
