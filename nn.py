@@ -1,7 +1,9 @@
 import math as _math
 import copy as _copy
-import decimal as _decimal
 import random as _random
+import decimal as _decimal
+
+_DEFAULT_BIAS = _decimal.Decimal(0.1)
 
 
 def _relu(weighted_sum: _decimal.Decimal) -> _decimal.Decimal:
@@ -24,12 +26,30 @@ def _relu_dx(relu_output: _decimal.Decimal) -> _decimal.Decimal:
     )
 
 
-def _softmax(value: _decimal.Decimal) -> _decimal.Decimal:
-    return _decimal.Decimal()
+def _softmax(logits: list[_decimal.Decimal]) -> list[_decimal.Decimal]:
+    # Set the precision for Decimal calculations
+    _decimal.getcontext().prec = 28
+
+    # Convert logits to Decimal if they are not already
+    logits = [_decimal.Decimal(logit) for logit in logits]
+
+    # Compute the maximum logit value for numerical stability
+    max_logit = max(logits)
+
+    # Compute the exponential of each logit, adjusted by the max logit value
+    exps = [_decimal.getcontext().exp(logit - max_logit) for logit in logits]
+
+    # Sum of all exponentiated logits
+    sum_of_exps = sum(exps)
+
+    # Normalize each exponentiated logit
+    softmax_output = [exp / sum_of_exps for exp in exps]
+
+    return softmax_output
 
 
 def _softmax_dx(value: _decimal.Decimal) -> _decimal.Decimal:
-    return _decimal.Decimal()
+    return value
 
 
 class Input:
@@ -68,11 +88,9 @@ class Neuron:
                 for v in inputs
             ]
         else:
-            if len(inputs) != len(weights):
-                raise ValueError(
-                    "Number of inputs and weights must be equal. "
-                    f"Inputs: {len(inputs)}, Weights: {len(weights)}"
-                )
+            assert len(inputs) == len(
+                weights
+            ), f"Number of inputs and weights must be equal. Inputs: {len(inputs)}, Weights: {len(weights)}"
 
             self._weighted_input = [
                 Input(value=v, weight=w) for v, w in zip(inputs, weights)
@@ -103,8 +121,7 @@ class Neuron:
 
     @property
     def output(self) -> _decimal.Decimal:
-        if self._linear_output is None:
-            self._linear_output = self.weighted_sum + self.bias
+        self._linear_output = self.weighted_sum + self.bias
 
         assert self._linear_output is not None
         # To introduce non-linearity to the output, use one of the common activation functions.
@@ -114,18 +131,12 @@ class Neuron:
         # - LazyRelU (Lazy Rectified Linear Unit)
         # - Tanh (Hyperbolic Tangent)
         # - Softmax
-        return _relu(self._linear_output)
 
-    @property
-    def loss(self) -> _decimal.Decimal:
-        """
-        Cross-entropy loss function.
-        """
+        if not self.is_output_neuron:
+            # Use ReLU for hidden layers
+            return _relu(self._linear_output)
 
-        if self._loss is None:
-            self._loss = -self._target * _decimal.Decimal(_math.log(self.output))
-
-        return self._loss
+        return self._linear_output
 
     @property
     def error(self) -> _decimal.Decimal:
@@ -133,8 +144,12 @@ class Neuron:
 
         return self._error
 
+    @property
+    def is_output_neuron(self) -> bool:
+        return self._is_in_output_layer
+
     def compute_error(self, next_layer: list["Neuron"] | None = None) -> None:
-        if self._is_in_output_layer:
+        if self.is_output_neuron:
             self._error = _relu_dx(self.output) * (self._target - self.output)
         else:
             assert (
@@ -151,31 +166,28 @@ class NeuralNetwork:
     def __init__(
         self,
         *,
-        bias: _decimal.Decimal,
-        width: int = 3,
         depth: int = 4,
         target: list[_decimal.Decimal],
     ):
-        self._bias = bias
         self._depth = depth
-        self._width = width
+        self._width = len(target)
 
         self._loss: _decimal.Decimal | None = None
         self._output: list[_decimal.Decimal] = []
         self._output_layer: list[Neuron] = []
 
         self._target = target
-        self._learning_rate = _decimal.Decimal("0.1")
+        self._learning_rate = _decimal.Decimal(0.1)
 
         self._nn_state: list[list[Neuron]] = []
 
         # Initialize each Neuron in the network with a bias, random inputs, and weights.
         self._nn_state = [
             [
-                Neuron(bias=self._bias, target=self._target[width_idx])
-                for _ in range(depth)
+                Neuron(bias=_DEFAULT_BIAS, target=self._target[width_idx])
+                for _ in range(self._depth)
             ]
-            for width_idx in range(width)
+            for width_idx in range(self._width)
         ]
 
     def _get_layer(self, idx: int) -> list[Neuron]:
@@ -183,6 +195,28 @@ class NeuralNetwork:
 
     def _compute_layer(self, layer: list[Neuron]) -> list[_decimal.Decimal]:
         return [neuron.output for neuron in layer]
+    
+    def _one_hot_encode(self, target: _decimal.Decimal):
+        """
+        Convert a class label into one-hot encoded format.
+        """
+
+        # TODO: One-hot encoding not correct.
+        one_hot = [_decimal.Decimal(0) for _ in range(len(self._target))]
+        one_hot[index] = self._target[index]
+        return one_hot
+    
+    def _compute_loss(self, targets: list[_decimal.Decimal], outputs: list[_decimal.Decimal]):
+        """
+        Compute the cross-entropy loss for multi-class classification.
+        """
+        loss = _decimal.Decimal(0)
+        for target, output in zip(targets, outputs):
+            target_one_hot = self._one_hot_encode(target)
+            # TODO: One-hot encoding not correct.
+            for t, o in zip(target_one_hot, output):
+                loss -= t * _decimal.Decimal(_math.log(o + _decimal.Decimal(1e-10)))
+        return loss
 
     @property
     def loss(self) -> _decimal.Decimal:
@@ -195,22 +229,20 @@ class NeuralNetwork:
         Update: Using Cross-entropy loss function after converting to multi-class Neural Network.
         """
 
-        if self._loss is None:
-            self._loss = sum(
-                (neuron.loss for neuron in self._output_layer),
-                start=_decimal.Decimal(0),
-            )
-
+        self._loss = self._compute_loss(self._target, self.output)
         return self._loss
 
     @property
     def output(self) -> list[_decimal.Decimal]:
         # TODO: The output layer typically uses a different activation function than the hidden layers (why?).
         # Update the interface to make that possible.
-        if not self._output:
-            self._output = self._compute_layer(self._output_layer)
+        outputs = self._compute_layer(self._output_layer)
+        self._output = _softmax(outputs)
 
         return self._output
+
+    def _get_bias(self, *, row: int, col: int) -> _decimal.Decimal:
+        return self._nn_state[row][col].bias
 
     def _get_weights(self, *, row: int, col: int) -> list[_decimal.Decimal]:
         """
@@ -226,9 +258,7 @@ class NeuralNetwork:
         """
 
         for depth_idx in range(self._depth - 1, -1, -1):
-            for width_idx in range(self._width):
-                neuron = self._nn_state[depth_idx][width_idx]
-
+            for neuron in self._get_layer(depth_idx):
                 if depth_idx == self._depth - 1:
                     # Output layer Neuron
                     neuron.compute_error()
@@ -247,11 +277,21 @@ class NeuralNetwork:
         for layer in self._nn_state:
             for neuron in layer:
                 for input in neuron.weighted_input:
-                    input.weight -= self._learning_rate * neuron.error * input.value
+                    input.weight += self._learning_rate * neuron.error * input.value
 
-                neuron.bias -= self._learning_rate * neuron.error
+                neuron.bias += self._learning_rate * neuron.error
 
-    def _compute_layers(self, input: list[_decimal.Decimal]) -> None:
+    def print_state(self) -> None:
+        print(f"Neural Network state: Width {self._width}, Depth {self._depth}")
+        for level in self._nn_state:
+            print(
+                [
+                    f"{neuron.output} ({'o'* neuron.is_output_neuron or 'h'})"
+                    for neuron in level
+                ]
+            )
+
+    def _compute_layers(self, input: list[_decimal.Decimal], iteration: int) -> None:
         """
         Runs a single iteration of the neural network on the input vector. Here's how the Neural Network can be visualized:
             Width = 2 (number of Neurons per layer)
@@ -265,7 +305,9 @@ class NeuralNetwork:
         For the first iteration of this method, all weights in the network are randomized.
         After the first iteration of this method, each Neuron in the network will have calculated inputs but still have random weights.
         """
+        self._output_layer = []
         output = _copy.deepcopy(input)
+        print(f"Iteration: {iteration}")
 
         # Top-down (vertical) Neurons creation.
         # Take a look at the visualization above.
@@ -273,49 +315,67 @@ class NeuralNetwork:
         # The inner loop initializes and computes the individual Neurons of the (vertical) layer (can be parallelized).
         # The combined output of one (vertical) layer is fed as inputs to each of the Neurons of the next (vertical) layer.
         for depth_idx in range(self._depth):
-            self._output_layer = []
+            layer = []
             is_final_output_layer = depth_idx == self._depth - 1
             # Create Neuron at each width level in this layer
             for width_idx in range(self._width):
-                bias = _decimal.Decimal(_random.random())
                 target = self._target[width_idx]
+                bias = self._get_bias(row=width_idx, col=depth_idx)
                 weights = self._get_weights(row=width_idx, col=depth_idx)
+                print(f"Weights: {weights}")
 
-                self._output_layer.append(
-                    Neuron(
-                        bias=bias,
-                        target=target,
-                        inputs=output,
-                        weights=weights,
-                        is_in_output_layer=is_final_output_layer,
-                    )
+                neuron = Neuron(
+                    bias=bias,
+                    target=target,
+                    inputs=output,
+                    weights=weights,
+                    is_in_output_layer=is_final_output_layer,
                 )
 
-                self._nn_state[width_idx][depth_idx] = self._output_layer[-1]
+                layer.append(neuron)
+                if is_final_output_layer:
+                    self._output_layer.append(neuron)
 
-            # Compute the output of this layer.
-            output = self._compute_layer(self._output_layer)
+                self._nn_state[width_idx][depth_idx] = layer[-1]
+
+            # Compute the output of this layer
+            output = self._compute_layer(layer)
 
         assert (
             len(self._output_layer) == self._width
         ), f"The output layer length {len(self._output_layer)} is not equal to the width of the network, something went wrong"
 
+    def _compute_inputs(self, inputs: list[_decimal.Decimal]) -> list[_decimal.Decimal]:
+        layer = [
+            Neuron(bias=_DEFAULT_BIAS, inputs=inputs, target=target)
+            for target in self._target
+        ]
+
+        return self._compute_layer(layer)
+
     def run(
         self,
         *,
         inputs: list[_decimal.Decimal],
-        loss_tolerance: _decimal.Decimal = _decimal.Decimal("0.01"),
+        loss_tolerance: _decimal.Decimal = _decimal.Decimal(0.01),
     ) -> None:
-        print("\nNetworkGoal: Minimize loss")
+        print("Network Goal: Minimize loss")
 
-        self._compute_layers(inputs)
+        iteration = 1
+        inputs_computed = self._compute_inputs(inputs)
+        self._compute_layers(inputs_computed, iteration)
+        current_output = [f"{o}" for o in self.output]
 
-        while self.loss > loss_tolerance:
-            print(f"Loss {self.loss} > {loss_tolerance}. Output: {self.output}")
+        while abs(self.loss) > loss_tolerance:
+            breakpoint()
+            print(f"Loss {self.loss} > {loss_tolerance}. Output: {current_output}")
 
+            iteration += 1
+            self.print_state()
             self._adjust_weights()
-            self._compute_layers(self.output)
+            self._compute_layers(self.output, iteration)
+            current_output = [f"{o}" for o in self.output]
 
         print(
-            f"\nRun complete. Loss {self.loss} <= {loss_tolerance}. Output: {self.output}"
+            f"\nRun complete. Loss {self.loss} <= {loss_tolerance}. Output: {current_output}"
         )
